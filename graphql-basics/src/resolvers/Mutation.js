@@ -1,6 +1,7 @@
 import uuidv4 from 'uuid/v4'
 
 const Mutation = {
+    //U S E R
     createUser(parent,args,{db},info){
         const emailTaken = db.users.some((user) => user.email === args.data.email )
         
@@ -47,13 +48,15 @@ const Mutation = {
 
         return user
     },
-    createPost(parent,args,{db},info){
+
+    //P O S T
+    createPost(parent,args,{db,pubsub},info){
         const userExist = db.users.some(user => user.id === args.data.author)
         if (!userExist){ throw new Error('El usuario no existe') }
 
         const post = { id: uuidv4(), ...args.data }
-
         db.posts.push(post)
+        pubsub.publish('post', post)
 
         return post
     },
@@ -67,7 +70,51 @@ const Mutation = {
 
         return postDeleted[0]
     },
-    createComment(parent,args,{db},info){
+    updatePost(parent,args,{db},info){
+        const { id, data } = args
+        const post = db.posts.find((post) => post.id === id )
+        if (!post){ throw new Error('No existe el post') }
+        //author: ID
+        if (typeof data.author === 'string'){
+            const userExist = db.users.find((user) => user.id === data.author)
+            if (!userExist){ throw new Error('No existe el usuario') } 
+            post.author = data.author
+        }
+        //title: String
+        if (typeof data.title === 'string'){ post.title = data.title }
+        //body: String
+        if (typeof data.body === 'string'){ post.body = data.body }
+        //published: Boolean
+        if (typeof data.published === 'boolean'){ post.published = data.published }
+
+        return post
+    },
+    updateComment(parent,args,{db},info){
+        const { id, data } = args
+        const comment = db.comments.find((comment) => comment.id === id )
+        if (!comment){ throw new Error('El comentario no existe') }
+        //text: String
+        if (typeof data.text === 'string'){ comment.text = data.text }
+        //author: ID
+        if (typeof data.author === 'string'){
+            const userExist = db.users.find((user) => user.id === data.author)
+            if (!userExist){ throw new Error('No existe el usuario') } 
+
+            comment.author = data.author 
+        }
+        //post: ID
+        if (typeof data.post === 'string'){ 
+            const postExist = db.posts.find((post) => post.id === id )
+            if (!postExist){ throw new Error('No existe el post') }
+
+            comment.post = data.post
+        }
+
+        return comment
+    },
+
+    //C O M M E N T
+    createComment(parent,args,{db,pubsub},info){
         const userExist = db.users.some(user => user.id === args.data.author)
         if (!userExist){ throw new Error('El usuario no existe') }
 
@@ -75,8 +122,8 @@ const Mutation = {
         if (!postExist){ throw new Error('El post no existe') }
 
         const comment = { id: uuidv4(), ...args.data }
-
         db.comments.push(comment)
+        pubsub.publish(`comment ${args.data.post}`, { comment })
 
         return comment
     },
