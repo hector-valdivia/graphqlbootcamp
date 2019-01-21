@@ -5,6 +5,9 @@ const prisma = new Prisma({
     endpoint: 'http://192.168.99.100:4466'
 })
 
+export { prisma as default }
+
+/*
 const createPostForUser = async (authorID, data) => {
     const userExist = prisma.exists.User({ id: authorID })
     if (!userExist){ throw new Error('No existe el usuario') }
